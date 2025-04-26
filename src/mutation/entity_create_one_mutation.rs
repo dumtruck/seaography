@@ -1,4 +1,6 @@
-use async_graphql::dynamic::{Field, FieldFuture, FieldValue, InputValue, ObjectAccessor, TypeRef};
+use async_graphql::dynamic::{
+    Field, FieldFuture, FieldValue, InputValue, ObjectAccessor, ResolverContext, TypeRef,
+};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyToColumn, PrimaryKeyTrait,
@@ -133,6 +135,7 @@ impl EntityCreateOneMutationBuilder {
                         &entity_input_builder,
                         &entity_object_builder,
                         input_object,
+                        &ctx,
                     )?;
 
                     let result = active_model.insert(db).await?;
@@ -152,6 +155,7 @@ pub fn prepare_active_model<T, A>(
     entity_input_builder: &EntityInputBuilder,
     entity_object_builder: &EntityObjectBuilder,
     input_object: &ObjectAccessor<'_>,
+    resolver_context: &ResolverContext<'_>,
 ) -> async_graphql::Result<A>
 where
     T: EntityTrait,
@@ -159,7 +163,20 @@ where
     <T as EntityTrait>::Model: IntoActiveModel<A>,
     A: ActiveModelTrait<Entity = T> + sea_orm::ActiveModelBehavior + std::marker::Send,
 {
-    let mut data = entity_input_builder.parse_object::<T>(input_object)?;
+    let object_name: String = entity_object_builder.type_name::<T>();
+
+    let data = entity_input_builder.parse_object::<T>(input_object)?;
+
+    let mut data = if let Some(transformer) = entity_input_builder
+        .context
+        .transformers
+        .mutation_input_object_transformers
+        .get(&object_name)
+    {
+        transformer(resolver_context, data)
+    } else {
+        data
+    };
 
     let mut active_model = A::default();
 

@@ -139,6 +139,7 @@ impl EntityCreateBatchMutationBuilder {
                             &entity_input_builder,
                             &entity_object_builder,
                             input_object,
+                            &ctx,
                         )?;
                         let result = active_model.insert(&transaction).await?;
                         results.push(result);

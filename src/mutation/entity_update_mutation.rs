@@ -160,6 +160,7 @@ impl EntityUpdateMutationBuilder {
                         &entity_input_builder,
                         &entity_object_builder,
                         input_object,
+                        &ctx,
                     )?;
 
                     T::update_many()
